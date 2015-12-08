@@ -6,10 +6,12 @@
         x:Class="pviewer5.MACNameMapDialog"
         Title="MACNameMapDialog"
         WindowStartupLocation="CenterOwner"
-        ShowInTaskbar="False" Height="468.667" Width="451">
+        ShowInTaskbar="False" Height="468.667" Width="351">
+    
     <Window.Resources>
         <local:MACConverterNumberOnly x:Key="macconverternumberonly"/>
     </Window.Resources>
+    
     <Grid x:Name="mnmgrid"
 		Margin="20,29,20,11.333"
 		ShowGridLines="True">
@@ -17,12 +19,33 @@
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
+        <WrapPanel x:Name="buttonbar"
+			Grid.ColumnSpan="2"
+			Grid.Row="0"
+			HorizontalAlignment="Left"
+			Margin="5,5,5,5">
+            <Button Content="Apply"
+                    Click="mnmApply"
+                    IsEnabled="{Binding Path=changedsinceapplied}"/>
+            <Button Content="Accept"
+				Click="mnmAccept"
+                    IsEnabled="{Binding Path=changedsinceapplied}"/>
+            <Button Content="Cancel"
+				Click="mnmCancel"/>
+            <Button Content="Save To Disk"
+				Click="mnmSaveToDisk"
+                    IsEnabled="{Binding Path=changedsincesaved}"/>
+            <Button Content="Load from Disk"
+				Click="mnmLoadFromDisk"/>
+            <Button Content="Append From Disk"
+				Click="mnmAppendFromDisk"/>
+        </WrapPanel>
         <GroupBox Header="Map of MAC Addresses To Aliases"
 			Grid.Column="0"
-			Grid.Row="0"
+			Grid.Row="1"
 			Margin="5,5,5,5">
             <!-- added Enable*Virtualization lines based on http://www.elegant-software.net/2014/05/performance-of-the-wpf-datagrid.html -->
             <!-- added VirtualizingPanel lines based on http://www.codewrecks.com/blog/index.php/2012/07/06/wpf-datagrid-poor-performance-on-sorting/ -->
@@ -36,7 +59,8 @@
 				AutoGenerateColumns="False"
 				ItemsSource="{Binding Path=dgtable}"
 				ItemStringFormat="x"
-				CanUserAddRows="False">
+				CanUserAddRows="False"
+                CellEditEnding="mnmcelleditending">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="MAC Address">
                         <DataGridTextColumn.Binding>
@@ -57,21 +81,5 @@
                 </DataGrid.ContextMenu>
             </DataGrid>
         </GroupBox>
-        <WrapPanel x:Name="buttonbar"
-			Grid.ColumnSpan="2"
-			Grid.Row="2"
-			HorizontalAlignment="Right"
-			Margin="5,5,5,5">
-            <Button Content="Accept"
-				Click="mnmAccept"/>
-            <Button Content="Cancel"
-				Click="mnmCancel"/>
-            <Button Content="Save To Disk"
-				Click="mnmSaveToDisk"/>
-            <Button Content="Load from Disk"
-				Click="mnmLoadFromDisk"/>
-            <Button Content="Append From Disk"
-				Click="mnmAppendFromDisk"/>
-        </WrapPanel>
     </Grid>
 </Window>

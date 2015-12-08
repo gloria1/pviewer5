@@ -25,15 +25,20 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 namespace pviewer5
 {
-
-
-    public class MACTools
+    
+    public class MACUtil : INotifyPropertyChanged
+    // class containing:
+    //      utility functions related to MAC addresses (value converters, etc.)
+    //      global state variables for whether to show aliases
+    // this is implemented as a dynamic class as a Singleton, i.e., there can only ever be one instance
+    // this is because static classes cannot implement interfaces (or at least INotifyPropertyChanged)
     {
 
-        public static bool DisplayMACAliases = true;
+        private static readonly MACUtil instance = new MACUtil();
+        public static MACUtil Instance { get { return instance; } }
 
         // the "official" mac name map which will be used in the value converter
-        public static macnamemapclass map = new macnamemapclass() 
+        public macnamemapclass map = new macnamemapclass() 
 		    {
 				    {0x000000000000, "ALL ZEROES"},
 				    {0x2818785702e3, "spr wifi"},
@@ -47,6 +52,24 @@ namespace pviewer5
 				    {0xb0c745364710, "buffalo 24g"},
 				    {0xb0c745364715, "buffalo 5g"}
 		    };
+
+        // private constructor below was set up per the "singleton" pattern, so that no further instances of this class could be created
+        // however, for some reason this caused the data binding to stop working, so i have commented this out
+        /* private MACUtil()
+        // constructor is private, so no one else can call it - the singleton instance was created in the initialization of Instance above
+        {
+            return;
+        }*/
+
+        // implement INotifyPropertyChanged
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void NotifyPropertyChanged(String propertyName = "")
+        {
+            if (PropertyChanged != null)
+            {
+                PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
 
 
         [Serializable]
@@ -98,7 +121,7 @@ namespace pviewer5
             }
         }
 
-        public static ulong? StringToMAC(string s)
+        public ulong? StringToMAC(string s)
         {
             // returns null if string cannot be parsed
 
@@ -131,7 +154,7 @@ namespace pviewer5
 
             return null;
         }
-        public static string MACToString(ulong value)
+        public string MACToString(ulong value)
         {
             ulong[] b = new ulong[6];
             string s;
@@ -156,7 +179,7 @@ namespace pviewer5
             ulong? v = 0;
 
             // try to parse as a raw mac address
-            v = MACTools.StringToMAC((string)value);
+            v = MACUtil.Instance.StringToMAC((string)value);
             if (v != null) return new ValidationResult(true, "Valid MAC Address");
             else return new ValidationResult(false, "Not a valid MAC address");
         }
@@ -172,11 +195,11 @@ namespace pviewer5
             ulong? v = 0;
 
             // first try to parse as a raw mac address
-            v = MACTools.StringToMAC((string)value);
+            v = MACUtil.Instance.StringToMAC((string)value);
             if (v != null) return new ValidationResult(true, "Valid MAC Address");
             // if that failed, see if string exists in macnamemap
-            foreach (ulong u in MACTools.map.Keys)
-                if ((string)value == MACTools.map[u])
+            foreach (ulong u in MACUtil.Instance.map.Keys)
+                if ((string)value == MACUtil.Instance.map[u])
                     return new ValidationResult(true, "Valid MAC Address");
             return new ValidationResult(false, "Not a valid MAC address");
         }
@@ -188,7 +211,7 @@ namespace pviewer5
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return MACTools.MACToString((ulong)value);
+            return MACUtil.Instance.MACToString((ulong)value);
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -196,7 +219,7 @@ namespace pviewer5
             ulong? v = 0;
 
             // first try to parse as a raw mac address
-            v = MACTools.StringToMAC((string)value);
+            v = MACUtil.Instance.StringToMAC((string)value);
             if (v != null) return v;
 
             // we should never get to this point, since validation step will not pass unless value is either valid raw mac 
@@ -212,8 +235,8 @@ namespace pviewer5
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (MACTools.DisplayMACAliases && MACTools.map.ContainsKey((ulong)value)) return MACTools.map[(ulong)value];
-            else return MACTools.MACToString((ulong)value);
+            if (GUIUtil.Instance.UseAliases && MACUtil.Instance.map.ContainsKey((ulong)value)) return MACUtil.Instance.map[(ulong)value];
+            else return MACUtil.Instance.MACToString((ulong)value);
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -221,12 +244,12 @@ namespace pviewer5
             ulong? v = 0;
 
             // first try to parse as a raw mac address
-            v = MACTools.StringToMAC((string)value);
+            v = MACUtil.Instance.StringToMAC((string)value);
             if (v != null) return v;
 
             // if that failed, see if string exists in macnamemap
-            foreach (ulong u in MACTools.map.Keys)
-                if ((string)value == MACTools.map[u])
+            foreach (ulong u in MACUtil.Instance.map.Keys)
+                if ((string)value == MACUtil.Instance.map[u])
                     return u;
 
             // we should never get to this point, since validation step will not pass unless value is either valid raw mac or existing entry in macnamemap
@@ -236,19 +259,55 @@ namespace pviewer5
         }
     }
 
+    public class MACMultiConverterNumberOrAlias : IMultiValueConverter
+    {
+        // converts number to/from display format MAC address, including translating aliases
+        // also takes value of UseAliases as an argument
 
-	public partial class MACNameMapDialog : Window
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (GUIUtil.Instance.UseAliases && MACUtil.Instance.map.ContainsKey((ulong)values[0]))
+                return MACUtil.Instance.map[(ulong)values[0]];
+            else return MACUtil.Instance.MACToString((ulong)values[0]);
+        }
+
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException("Cannot convert back");
+        }
+
+    }
+
+
+    public partial class MACNameMapDialog : Window, INotifyPropertyChanged
 	{
 		public static RoutedCommand mnmaddrow = new RoutedCommand();
-		public MACTools.macnametableclass dgtable {get;set;}
+		public MACUtil.macnametableclass dgtable {get;set;}
 
-		public MACNameMapDialog()
+        private bool _chgsincesave = false;
+        public bool changedsincesavedtodisk { get { return _chgsincesave; } set { _chgsincesave = value; NotifyPropertyChanged(); } }
+        private bool _chgsinceapplied = false;
+        public bool changedsinceapplied { get { return _chgsinceapplied; } set { _chgsinceapplied = value; NotifyPropertyChanged(); } }
+
+        // implement INotifyPropertyChanged
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void NotifyPropertyChanged(String propertyName = "")
+        {
+            if (PropertyChanged != null)
+            {
+                PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+
+
+        public MACNameMapDialog()
 		{
 			CommandBinding mnmaddrowbinding;
 
-			dgtable = MACTools.map.maptotable();
+			dgtable = MACUtil.Instance.map.maptotable();
 			
 			InitializeComponent();
+            buttonbar.DataContext = this;
 			MNMDG.DataContext = this;
 			mnmaddrowbinding = new CommandBinding(mnmaddrow, Executedaddrow, CanExecuteaddrow);
 			MNMDG.CommandBindings.Add(mnmaddrowbinding);
@@ -272,9 +331,9 @@ namespace pviewer5
 
 			return true;
 		}
-		private void mnmAccept(object sender, RoutedEventArgs e)
+		private void mnmApply(object sender, RoutedEventArgs e)
 		{
-			MACTools.macnamemapclass map = new MACTools.macnamemapclass();
+			MACUtil.macnamemapclass map = new MACUtil.macnamemapclass();
 
 			if (!IsValid(mnmgrid))
 			{
@@ -291,28 +350,37 @@ namespace pviewer5
 				}
 				else        // else transfer local map to official map and close dialog
 				{
-					MACTools.map = map;
-					DialogResult = true;
-					// no need to call Close, since changing DialogResult to non-null automatically closes window
-					//Close();
-				}
+                    changedsinceapplied = false;
+					MACUtil.Instance.map = map;
+                    GUIUtil.Instance.UseAliases = GUIUtil.Instance.UseAliases; // no-op but will cause change notifications to view
+                }
 			}
+		}
 
-			// do we automatically trigger re-application of filter, or have separate command for that?
-			// if/when reapply, need to reset nummatched properties
-		}
-		private void mnmCancel(object sender, RoutedEventArgs e)
+        private void mnmAccept(object sender, RoutedEventArgs e)
+        {
+            mnmApply(this, null);
+            Close();
+        }
+
+        private void mnmCancel(object sender, RoutedEventArgs e)
 		{
-			DialogResult = false;
-			// no need to call Close, since changing DialogResult to non-null automatically closes window
-			//Close();
+			Close();
 		}
-		private void mnmSaveToDisk(object sender, RoutedEventArgs e)
+
+        private void mnmcelleditending(object sender, DataGridCellEditEndingEventArgs e)
+        // handle CellEditEnding event from the datagrid
+        {
+            changedsinceapplied = true;
+            changedsincesavedtodisk = true;
+        }
+
+        private void mnmSaveToDisk(object sender, RoutedEventArgs e)
 		{
 			SaveFileDialog dlg = new SaveFileDialog();
 			FileStream fs;
 			IFormatter formatter = new BinaryFormatter();
-			MACTools.macnamemapclass map = new MACTools.macnamemapclass();
+			MACUtil.macnamemapclass map = new MACUtil.macnamemapclass();
 
 			// first need to transfer datagrid table to official map
 			if (!IsValid(mnmgrid))
@@ -338,6 +406,7 @@ namespace pviewer5
 					{
 						fs = new FileStream(dlg.FileName, FileMode.OpenOrCreate);
 						formatter.Serialize(fs, map);
+                        changedsincesavedtodisk = false;
 						fs.Close();
 					}
 				}
@@ -359,10 +428,11 @@ namespace pviewer5
 
 				try
 				{
-					dgtable = ((MACTools.macnamemapclass)formatter.Deserialize(fs)).maptotable();
+					dgtable = ((MACUtil.macnamemapclass)formatter.Deserialize(fs)).maptotable();
 					// next command re-sets ItemsSource, window on screen does not update to show new contents of dgtable, don't know why
 					// there is probably some mechanism to get the display to update without re-setting the ItemsSource, but this seems to work
 					MNMDG.ItemsSource = dgtable;
+                    changedsincesavedtodisk = false;
 				}
 				catch
 				{
@@ -390,10 +460,11 @@ namespace pviewer5
 
 				try
 				{
-					foreach(MACTools.mnmtableitem i in ((MACTools.macnamemapclass)formatter.Deserialize(fs)).maptotable()) dgtable.Add(i);
+					foreach(MACUtil.mnmtableitem i in ((MACUtil.macnamemapclass)formatter.Deserialize(fs)).maptotable()) dgtable.Add(i);
 					// next command re-sets ItemsSource, window on screen does not update to show new contents of dgtable, don't know why
 					// there is probably some mechanism to get the display to update without re-setting the ItemsSource, but this seems to work
 					MNMDG.ItemsSource = dgtable;
+                    changedsincesavedtodisk = true;
 				}
 				catch
 				{
@@ -407,12 +478,12 @@ namespace pviewer5
 		}
 		private static void Executedaddrow(object sender, ExecutedRoutedEventArgs e)
 		{
-			MACTools.macnametableclass q;
+			MACUtil.macnametableclass q;
 			DataGrid dg = (DataGrid)e.Source;
 
-			q = (MACTools.macnametableclass)(dg.ItemsSource);
+			q = (MACUtil.macnametableclass)(dg.ItemsSource);
 
-			q.Add(new MACTools.mnmtableitem(0, ""));
+			q.Add(new MACUtil.mnmtableitem(0, ""));
 		}
 		private static void PreviewExecutedaddrow(object sender, ExecutedRoutedEventArgs e)
 		{

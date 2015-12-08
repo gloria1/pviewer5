@@ -6,9 +6,11 @@
 
     <Window.Resources>
         <local:IP4ConverterNumberOrAlias x:Key="IP4converternumberoralias"/>
-        <ObjectDataProvider x:Key="IP4UtilKey" ObjectType="{x:Type local:IP4Util}"/>
+        <local:MACConverterNumberOrAlias x:Key="MACconverternumberoralias"/>
+        <ObjectDataProvider x:Key="GUIUtilKey" ObjectType="{x:Type local:GUIUtil}"/>
         <local:IP4MultiConverterNumberOrAlias x:Key="IP4multiconverternumberoralias"/>
-        
+        <local:MACMultiConverterNumberOrAlias x:Key="MACmulticonverternumberoralias"/>
+ 
         <DataTemplate DataType="{x:Type local:DNSRR}">
             <TextBlock Text="{Binding Path=headerdisplayinfo}"
                        IsHitTestVisible="False"/>
@@ -16,6 +18,24 @@
         <DataTemplate DataType="{x:Type local:H}">
             <TextBlock Text="{Binding Path=headerdisplayinfo}"/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type local:ARPH}">
+            <WrapPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding Path=headerdisplayinfo}"/>
+                <TextBlock Text=", Sender HW: "/>
+                <TextBlock>
+                    <TextBlock.Text>
+                        <MultiBinding Converter="{StaticResource MACmulticonverternumberoralias}">
+                            <Binding Path="SenderHW"/>
+                            <Binding Source="{StaticResource GUIUtilKey}" Path="Instance.UseAliases" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+
+
+
+            </WrapPanel>            
+        </DataTemplate>
+        
         <HierarchicalDataTemplate DataType="{x:Type local:DNSRRList}"
                                   ItemsSource="{Binding Path=Items}">
             <TextBlock Text="{Binding Path=headerdisplayinfo}"/>
@@ -34,7 +54,7 @@
                     <TextBlock.Text>
                         <MultiBinding Converter="{StaticResource IP4multiconverternumberoralias}">
                             <Binding Path="SrcIP4"/>
-                            <Binding Source="{StaticResource IP4UtilKey}" Path="Instance.IP4Hex" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged"/>
+                            <Binding Source="{StaticResource GUIUtilKey}" Path="Instance.Hex" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged"/>
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
@@ -55,7 +75,7 @@
                 <CheckBox IsChecked="{Binding Path=Active}"/>
                 <Label Content="Active"/>
                 <Label Content="{Binding Path=DisplayInfo}"/>
-                <CheckBox IsChecked="{Binding Source={StaticResource IP4UtilKey}, Path=Instance.IP4Hex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <CheckBox IsChecked="{Binding Source={StaticResource GUIUtilKey}, Path=Instance.Hex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
             </WrapPanel>
         </HierarchicalDataTemplate>
         <DataTemplate DataType="{x:Type local:FilterItem}">
@@ -112,11 +132,11 @@
                    Margin="5,5,5,5">
             <CheckBox Name="displayaliascheckbox"
                       Content="Display Aliases"
-                      IsChecked="{Binding Source={StaticResource IP4UtilKey}, Path=Instance.UseAliases, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      IsChecked="{Binding Source={StaticResource GUIUtilKey}, Path=Instance.UseAliases, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                       Margin="20,5"/>
             <CheckBox Name="displayIP4inhexcheckbox"
                       Content="Display IP4 in Hex"
-                      IsChecked="{Binding Source={StaticResource IP4UtilKey}, Path=Instance.IP4Hex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      IsChecked="{Binding Source={StaticResource GUIUtilKey}, Path=Instance.IP4Hex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                       Margin="20,5"/>
         </WrapPanel>
         <GroupBox Header="Packet Groups"

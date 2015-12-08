@@ -25,25 +25,17 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 namespace pviewer5
 {
-
-    // below is IP4Util class re-implemented as a regular class with a singleton Instance
-
+    
     public class IP4Util : INotifyPropertyChanged
     // class containing:
     //      utility functions related to IP4 addresses (value converters, etc.)
-    //      global state variables for whether to show them in hex and whether to show aliases
     // this is implemented as a dynamic class as a Singleton, i.e., there can only ever be one instance
     // this is because static classes cannot implement interfaces (or at least INotifyPropertyChanged)
     {
         private static readonly IP4Util instance = new IP4Util();
         public static IP4Util Instance { get { return instance; } }
 
-        private bool _ip4hex;
-        public bool IP4Hex { get { return _ip4hex; } set { _ip4hex = value; NotifyPropertyChanged("IP4Hex"); } }
-        private bool _usealiases;
-        public bool UseAliases { get { return _usealiases; } set { _usealiases = value; NotifyPropertyChanged(); } }
-
-        public IP4namemapclass map = new IP4namemapclass()
+         public IP4namemapclass map = new IP4namemapclass()
         {
                 {0x00000000, "ALL ZEROES"},
         };
@@ -70,8 +62,8 @@ namespace pviewer5
         // converts string to numerical IP4 value
         // returns null if string cannot be parsed
         {
-            string regIP4 = (IP4Hex ? "^([a-fA-F0-9]{0,2}.){0,3}[a-fA-F0-9]{0,2}$" : "^([0-9]{0,3}.){0,3}[0-9]{0,3}$");
-            NumberStyles style = (IP4Hex ? NumberStyles.HexNumber : NumberStyles.Integer);
+            string regIP4 = (GUIUtil.Instance.Hex ? "^([a-fA-F0-9]{0,2}.){0,3}[a-fA-F0-9]{0,2}$" : "^([0-9]{0,3}.){0,3}[0-9]{0,3}$");
+            NumberStyles style = (GUIUtil.Instance.Hex ? NumberStyles.HexNumber : NumberStyles.Integer);
             string[] IP4bits = new string[4];
 
             try
@@ -108,7 +100,7 @@ namespace pviewer5
             b[2] = ((value & 0xff00) / 0x100);
             b[3] = ((value & 0xff) / 0x1);
 
-            if (IP4Hex) s = String.Format("{0:x2}.{1:x2}.{2:x2}.{3:x2}", b[0], b[1], b[2], b[3]);
+            if (GUIUtil.Instance.Hex) s = String.Format("{0:x2}.{1:x2}.{2:x2}.{3:x2}", b[0], b[1], b[2], b[3]);
             else s = String.Format("{0}.{1}.{2}.{3}", b[0], b[1], b[2], b[3]);
 
             return s;
@@ -237,7 +229,7 @@ namespace pviewer5
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (IP4Util.Instance.UseAliases && IP4Util.Instance.map.ContainsKey((uint)value))
+            if (GUIUtil.Instance.UseAliases && IP4Util.Instance.map.ContainsKey((uint)value))
                 return IP4Util.Instance.map[(uint)value];
             else return IP4Util.Instance.IP4ToString((uint)value);
         }
@@ -269,7 +261,7 @@ namespace pviewer5
 
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            if (IP4Util.Instance.UseAliases && IP4Util.Instance.map.ContainsKey((uint)values[0]))
+            if (GUIUtil.Instance.UseAliases && IP4Util.Instance.map.ContainsKey((uint)values[0]))
                 return IP4Util.Instance.map[(uint)values[0]];
             else return IP4Util.Instance.IP4ToString((uint)values[0]);
         }
@@ -282,33 +274,41 @@ namespace pviewer5
 
 
 
-
-
-    public partial class IP4NameMapDialog : Window
+    public partial class IP4NameMapDialog : Window, INotifyPropertyChanged
 	{
 		public static RoutedCommand inmaddrow = new RoutedCommand();
 
 		public IP4Util.IP4nametableclass dgtable { get; set; }
 
-		public IP4NameMapDialog()
+        private bool _chgsincesave = false;
+        public bool changedsincesavedtodisk { get { return _chgsincesave; } set { _chgsincesave = value; NotifyPropertyChanged(); } }
+        private bool _chgsinceapplied = false;
+        public bool changedsinceapplied { get { return _chgsinceapplied; } set { _chgsinceapplied = value; NotifyPropertyChanged(); } }
+
+        // implement INotifyPropertyChanged
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void NotifyPropertyChanged(String propertyName = "")
+        {
+            if (PropertyChanged != null)
+            {
+                PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+
+
+        public IP4NameMapDialog()
 		{
 			CommandBinding inmaddrowbinding;
-
+            
 			dgtable = IP4Util.Instance.map.maptotable();
 
-			InitializeComponent();
+            InitializeComponent();
+            buttonbar.DataContext = this;
 			INMDG.DataContext = this;
 			inmaddrowbinding = new CommandBinding(inmaddrow, Executedaddrow, CanExecuteaddrow);
 			INMDG.CommandBindings.Add(inmaddrowbinding);
 			inmaddrowmenuitem.CommandTarget = INMDG;   // added this so that menu command would not be disabled when datagrid first created; not sure exactly why this works, books/online articles refer to WPF not correctly determining the intended command target based on focus model (logical focus? keyboard focus?), so you have to set the command target explicitly
-
-
-
-			// add handlers for 
-			//		file save/load/append from
-
-
-
+            
 		}
 
 		public bool IsValid(DependencyObject parent)
@@ -328,7 +328,7 @@ namespace pviewer5
 			return true;
 		}
 
-		private void inmAccept(object sender, RoutedEventArgs e)
+		private void inmApply(object sender, RoutedEventArgs e)
 		{
 			IP4Util.IP4namemapclass map = new IP4Util.IP4namemapclass();
 
@@ -347,26 +347,34 @@ namespace pviewer5
 				}
 				else        // else transfer local map to official map and close dialog
 				{
+                    changedsinceapplied = false;
 					IP4Util.Instance.map = map;
-					DialogResult = true;
-					// no need to call Close, since changing DialogResult to non-null automatically closes window
-					//Close();
+                    GUIUtil.Instance.Hex = GUIUtil.Instance.Hex; // no-op but causes change notifications to gui
 				}
 			}
-
-			// do we automatically trigger re-application of filter, or have separate command for that?
-			// if/when reapply, need to reset nummatched properties
 		}
 
-		private void inmCancel(object sender, RoutedEventArgs e)
+        private void inmAccept(object sender, RoutedEventArgs e)
+        // close window with saving changes
+        {
+            inmApply(this, null);
+            Close();
+        }
+
+        private void inmCancel(object sender, RoutedEventArgs e)
+        // close window without saving changes
 		{
-			DialogResult = false;
-			// no need to call Close, since changing DialogResult to non-null automatically closes window
-			//Close();
+			Close();
 		}
 
+        private void inmcelleditending(object sender, DataGridCellEditEndingEventArgs e)
+        // handle CellEditEnding event from the datagrid
+        {
+            changedsinceapplied = true;
+            changedsincesavedtodisk = true;
+        }
 
-		private void inmSaveToDisk(object sender, RoutedEventArgs e)
+        private void inmSaveToDisk(object sender, RoutedEventArgs e)
 		{
 			SaveFileDialog dlg = new SaveFileDialog();
 			FileStream fs;
@@ -397,6 +405,7 @@ namespace pviewer5
 					{
 						fs = new FileStream(dlg.FileName, FileMode.OpenOrCreate);
 						formatter.Serialize(fs, map);
+                        changedsincesavedtodisk = false;
 						fs.Close();
 					}
 				}
@@ -423,6 +432,7 @@ namespace pviewer5
 					// next command re-sets ItemsSource, window on screen does not update to show new contents of dgtable, don't know why
 					// there is probably some mechanism to get the display to update without re-setting the ItemsSource, but this seems to work
 					INMDG.ItemsSource = dgtable;
+                    changedsincesavedtodisk = false;
 				}
 				catch
 				{
@@ -454,6 +464,7 @@ namespace pviewer5
 					// next command re-sets ItemsSource, window on screen does not update to show new contents of dgtable, don't know why
 					// there is probably some mechanism to get the display to update without re-setting the ItemsSource, but this seems to work
 					INMDG.ItemsSource = dgtable;
+                    changedsincesavedtodisk = true;
 				}
 				catch
 				{

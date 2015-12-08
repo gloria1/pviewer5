@@ -25,6 +25,9 @@ namespace pviewer5
 {
     [Serializable]
     public class FilterSet : INotifyPropertyChanged
+        // a FilterSet is a list of Filters
+        // FilterSet.Include returns true if ANY Filter.Include returns true
+        // FilterSet.Include also returns true if Filters is empty
     {
         public string Filename { get; set; }
         private bool _changedsincesave;
@@ -51,6 +54,7 @@ namespace pviewer5
         {
             bool include = false;   // the default result is to not include the packet, unless one of the filters says to include it
 
+            if (Filters.Count() == 0) return true;
             foreach (Filter f in Filters)
                 if (f.Active)
                     if (f.Match(pkt))
@@ -136,6 +140,8 @@ namespace pviewer5
 
     [Serializable]
     public class Filter : INotifyPropertyChanged
+    // list of FilterItems
+    // Filter.Include returns true only if ALL FilterItem.Match calls return true
     {
         private bool _active;
         public bool Active
@@ -167,13 +173,13 @@ namespace pviewer5
             Active = true;
             InclusionFilter = true;
             filterlist = new ObservableCollection<FilterItem>();
-            filterlist.Add(new FilterItem(0xa9000000, 0xff000000, Relations.Equal));
             Parent = parent;
         }
 
         public bool Match(Packet pkt)
         // must match on ALL filter items to return true
         {
+            if (filterlist.Count() == 0) return false;
             foreach (FilterItem fi in filterlist) if (fi.Match(pkt) == false) return false;
             return true;
         }
@@ -211,11 +217,6 @@ namespace pviewer5
                     case Relations.GreaterThanOrEqual: r = ">="; break;
                     default: r = "invalid relation"; break;
                 }
-
-                // BOOKMARK - REMOVE ALL THE STATIC ASPECTS OF IP4TOOLS AND MACTOOLS
-                // BOOKMARK - SET UP NOTIFICATIONS WHEN IP4 DISPLAY SETTINGS CHANGES
-                // BOOKMARK - SHOW ALIASES
-
 
                 return "IPv4 Source " + r + IP4Util.Instance.IP4ToString(Value) + ", Mask=" + IP4Util.Instance.IP4ToString(Mask);
             }

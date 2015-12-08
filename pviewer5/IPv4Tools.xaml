@@ -6,10 +6,13 @@
         x:Class="pviewer5.IP4NameMapDialog"
         Title="IP4NameMapDialog"
         WindowStartupLocation="CenterOwner"
-        ShowInTaskbar="False" Height="468.667" Width="451">
+        ShowInTaskbar="False" Height="468.667" Width="351">
+    
     <Window.Resources>
         <local:IP4ConverterNumberOnly x:Key="IP4converternumberonly"/>
+        
     </Window.Resources>
+    
     <Grid x:Name="inmgrid"
 		Margin="20,29,20,11.333"
 		ShowGridLines="True">
@@ -17,12 +20,33 @@
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
+        <WrapPanel x:Name="buttonbar"
+			Grid.ColumnSpan="2"
+			Grid.Row="0"
+			HorizontalAlignment="Left"
+			Margin="5,5,5,5">
+            <Button Content="Apply"
+				Click="inmApply"
+                    IsEnabled="{Binding Path=changedsinceapplied}"/>
+            <Button Content="Accept and Close"
+				Click="inmAccept"
+                    IsEnabled="{Binding Path=changedsinceapplied}"/>
+            <Button Content="Cancel"
+				Click="inmCancel"/>
+            <Button Content="Save To Disk"
+				Click="inmSaveToDisk"
+                    IsEnabled="{Binding Path=changedsincesaved}"/>
+            <Button Content="Load from Disk"
+				Click="inmLoadFromDisk"/>
+            <Button Content="Append From Disk"
+				Click="inmAppendFromDisk"/>
+        </WrapPanel>
         <GroupBox Header="Map of IP4 Addresses To Aliases"
 			Grid.Column="0"
-			Grid.Row="0"
+			Grid.Row="1"
 			Margin="5,5,5,5">
             <!-- added Enable*Virtualization lines based on http://www.elegant-software.net/2014/05/performance-of-the-wpf-datagrid.html -->
             <!-- added VirtualizingPanel lines based on http://www.codewrecks.com/blog/index.php/2012/07/06/wpf-datagrid-poor-performance-on-sorting/ -->
@@ -36,7 +60,8 @@
 				AutoGenerateColumns="False"
 				ItemsSource="{Binding Path=dgtable}"
 				ItemStringFormat="x"
-				CanUserAddRows="False">
+				CanUserAddRows="False"
+                CellEditEnding="inmcelleditending">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="IP4 Address">
                         <DataGridTextColumn.Binding>
@@ -57,21 +82,6 @@
                 </DataGrid.ContextMenu>
             </DataGrid>
         </GroupBox>
-        <WrapPanel x:Name="buttonbar"
-			Grid.ColumnSpan="2"
-			Grid.Row="2"
-			HorizontalAlignment="Right"
-			Margin="5,5,5,5">
-            <Button Content="Accept"
-				Click="inmAccept"/>
-            <Button Content="Cancel"
-				Click="inmCancel"/>
-            <Button Content="Save To Disk"
-				Click="inmSaveToDisk"/>
-            <Button Content="Load from Disk"
-				Click="inmLoadFromDisk"/>
-            <Button Content="Append From Disk"
-				Click="inmAppendFromDisk"/>
-        </WrapPanel>
+
     </Grid>
 </Window>

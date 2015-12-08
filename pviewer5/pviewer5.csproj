@@ -69,6 +69,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Filter.cs" />
+    <Compile Include="GUIUtil.cs" />
     <Compile Include="PacketViewer.xaml.cs">
       <DependentUpon>PacketViewer.xaml</DependentUpon>
     </Compile>

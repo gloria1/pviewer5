@@ -40,12 +40,7 @@ namespace pviewer5
                 MACConverterNumberOrAlias mc = new MACConverterNumberOrAlias();
                 IP4ConverterNumberOrAlias ic = new IP4ConverterNumberOrAlias();
                 if (Prot == 0x0800)     // IPv4
-                    return String.Format("ARP OpCode: {0:X4}, HWType: {1:X4}, Prot {2:X4}", Opn, HWType, Prot)
-                            + ", SenderHW " + mc.Convert(SenderHW, null, null, null)
-                            + ", SenderIP4 " + ic.Convert(SenderProt, null, null, null)
-                            + ", TargetHW " + mc.Convert(TargetHW, null, null, null)
-                            + ", TargetIP4 " + ic.Convert(TargetProt, null, null, null);
-
+                    return String.Format("ARP OpCode: {0:X4}, HWType: {1:X4}, Prot {2:X4}", Opn, HWType, Prot);
                 else
                     return String.Format("ARP OpCode: {0:X4}, HWType: {1:X4}, Prot {2:X4}", Opn, HWType, Prot)
                             + ", SenderHW " + mc.Convert(SenderHW, null, null, null)
